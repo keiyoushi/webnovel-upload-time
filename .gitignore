@@ -1,0 +1,21 @@
+# Ignore compiled Python files
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Ignore virtual environment
+.venv/
+
+# Ignore build artifacts
+build/
+
+# Ignore data directory
+data/
+
+# Ignore IDE settings
+.idea/
+
+# Ignore python version file
+.python-version
+
