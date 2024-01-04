@@ -1,0 +1,28 @@
+name: Keep Alive
+on:
+  schedule:
+    - cron: '0 1 * * *'
+
+jobs:
+  build:
+    name: Keep alive
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout gh-pages branch
+        uses: actions/checkout@v3
+
+      - name: Push repo changes
+        run: |
+          last_commit_date=$(git log -1 --format=%cd --date=format:"%Y-%m-%d")
+          current_date=$(date +"%Y-%m-%d")
+          days_diff=$(echo $(( ($(date -d $current_date +%s) - $(date -d $last_commit_date +%s)) / 86400 )))
+          
+          if [ $days_diff -eq 58 ]; then
+            echo "Creating a dummy commit..."
+            git config --global user.email "github-actions[bot]@users.noreply.github.com"
+            git config --global user.name "github-actions[bot]"
+            git commit --allow-empty -m "Dummy commit for automated process"
+            git push
+          else
+            echo "Last commit was not made 58 days ago. No action needed."
+          fi
