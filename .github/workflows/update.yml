@@ -32,6 +32,8 @@ jobs:
         run: black .
 
       - name: Update data and build
+        env:
+          CI: ""
         run: python main.py
 
       - name: Push data changes

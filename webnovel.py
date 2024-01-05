@@ -1,25 +1,38 @@
-from typing import Self, Optional
+import time
+from typing import Optional
 from urllib.parse import urlencode
 
 import requests
 from requests import Response
+from tqdm.auto import tqdm
 
 
 class WebNovel:
     __BASE_URL: str = "https://www.webnovel.com/go/pcm"
+    __MAX_RETRIES: int = 3
+    __BASE_DELAY: int = 1
 
-    def __request(self: Self, path: str, payload: Optional[dict] = None) -> Response:
-        if payload is None:
-            url_params: str = ""
-        else:
-            url_params: str = urlencode(payload)
+    def __request(self, path: str, payload: Optional[dict] = None) -> Response:
+        for attempts in range(self.__MAX_RETRIES):
+            try:
+                url_params = urlencode(payload) if payload else ""
+                response = requests.get(
+                    url=f"{self.__BASE_URL}{path}?{url_params}",
+                    headers={
+                        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:120.0)"
+                    },
+                )
 
-        return requests.get(
-            url=f"{self.__BASE_URL}{path}?{url_params}",
-            headers={
-                "User-Agent": f"Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:120.0)"
-            },
-        )
+                response.raise_for_status()
+                return response
+
+            except requests.RequestException as e:
+                print(f"Request failed: {e}")
+
+            tqdm.write(f"Failed to get response. Sleeping for a bit.")
+            time.sleep(2**attempts)
+
+        raise Exception(f"Failed to get response after {self.__MAX_RETRIES} tries")
 
     def __category_request(self, page: Optional[int] = None) -> Response:
         payload: dict[str, int] = {

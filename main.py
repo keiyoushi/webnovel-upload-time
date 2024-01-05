@@ -1,5 +1,6 @@
 import concurrent.futures
 import json
+import os
 from pathlib import Path
 
 from tqdm.auto import tqdm
@@ -14,7 +15,11 @@ DATA_FOLDER.mkdir(parents=True, exist_ok=True)
 BUILD_FOLDER = CWD.joinpath("build")
 BUILD_FOLDER.mkdir(parents=True, exist_ok=True)
 
-MAX_WORKERS = 20
+if os.getenv("CI") is not None:
+    print("CI is enabled")
+    MAX_WORKERS = 10
+else:
+    MAX_WORKERS = 25
 
 
 def main():
@@ -43,13 +48,12 @@ def main():
 
         for comic_id, task in tqdm(tasks):
             chapter_ids = task.result()
-            tqdm.write(f"{comic_id}: {len(chapter_ids)}")
             for chapter_id in chapter_ids:
                 comic_chapter_ids.append((comic_id, chapter_id))
 
     with concurrent.futures.ThreadPoolExecutor(max_workers=MAX_WORKERS) as executor:
         tasks = []
-        tqdm.write("Fetching update time asd saving into db")
+        tqdm.write("Submitting chapters to fetch upload time")
         for comic_id, chapter_id in tqdm(comic_chapter_ids):
             if database.has_chapter_upload_time(comic_id, chapter_id):
                 continue
@@ -58,8 +62,7 @@ def main():
                 webnovel.get_chapter_upload_time, comic_id, chapter_id
             )
             tasks.append((comic_id, chapter_id, task))
-            tqdm.write(f"Submitted {comic_id} {chapter_id}")
-
+        tqdm.write("Inserting new chapters upload time to db")
         for comic_id, chapter_id, task in tqdm(tasks):
             try:
                 upload_time = task.result()
@@ -67,7 +70,6 @@ def main():
                 _ = e
                 continue
             database.insert_chapter_upload_time(comic_id, chapter_id, upload_time)
-            tqdm.write(f"Inserted {comic_id} {chapter_id} - {upload_time}")
 
     tqdm.write("Generating json files")
     for comic_id in database.get_comic_ids():
