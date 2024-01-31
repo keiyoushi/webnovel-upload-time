@@ -1,6 +1,5 @@
 import concurrent.futures
 import json
-import os
 from pathlib import Path
 
 from tqdm.auto import tqdm
@@ -16,61 +15,32 @@ BUILD_FOLDER = CWD.joinpath("build")
 BUILD_FOLDER.mkdir(parents=True, exist_ok=True)
 
 MAX_WORKERS = 10
-if os.getenv("CI") is not None:
-    print("CI is enabled")
-    PROXY_URL = os.getenv("PROXY_URL")
-else:
-    PROXY_URL = input("Enter proxy url -> ").strip()
 
 
 def main():
     database = Database(DATA_FOLDER.joinpath("database.sqlite3"))
-    webnovel = WebNovel(PROXY_URL)
+    webnovel = WebNovel()
     page_item_count, total_item = webnovel.get_pagination_info()
     last_page = -(-total_item // page_item_count)
 
     tqdm.write(f"Getting comic ids")
-    comic_ids_results = thread_map(
-        lambda i: webnovel.get_comic_ids(i + 1),
-        range(last_page),
-        max_workers=MAX_WORKERS,
-    )
-    comic_ids = sorted(
-        {comic_id for result in comic_ids_results for comic_id in result}
-    )
+    comic_ids: set[int] = set()
+    for page_index in tqdm(range(last_page)):
+        comic_ids.update(webnovel.get_comic_ids(page_index + 1))
 
     tqdm.write("Getting chapter ids for comics")
-    comic_chapter_ids = []
-    with concurrent.futures.ThreadPoolExecutor(max_workers=MAX_WORKERS) as executor:
-        tasks = []
-        for comic_id in comic_ids:
-            task = executor.submit(webnovel.get_chapter_ids, comic_id)
-            tasks.append((comic_id, task))
-
-        for comic_id, task in tqdm(tasks):
-            chapter_ids = task.result()
-            for chapter_id in chapter_ids:
-                comic_chapter_ids.append((comic_id, chapter_id))
-
-    with concurrent.futures.ThreadPoolExecutor(max_workers=MAX_WORKERS) as executor:
-        tasks = []
-        tqdm.write("Submitting chapters to fetch upload time")
-        for comic_id, chapter_id in tqdm(comic_chapter_ids):
+    comic_chapter_ids: set[tuple[int, int]] = set()
+    for comic_id in tqdm(comic_ids):
+        for chapter_id in webnovel.get_chapter_ids(comic_id):
             if database.has_chapter_upload_time(comic_id, chapter_id):
                 continue
 
-            task = executor.submit(
-                webnovel.get_chapter_upload_time, comic_id, chapter_id
-            )
-            tasks.append((comic_id, chapter_id, task))
-        tqdm.write("Inserting new chapters upload time to db")
-        for comic_id, chapter_id, task in tqdm(tasks):
-            try:
-                upload_time = task.result()
-            except Exception as e:
-                _ = e
-                continue
-            database.insert_chapter_upload_time(comic_id, chapter_id, upload_time)
+            comic_chapter_ids.add((comic_id, chapter_id))
+
+    tqdm.write("Inserting new chapters upload time to db")
+    for comic_id, chapter_id in tqdm(comic_chapter_ids):
+        upload_time = webnovel.get_chapter_upload_time(comic_id, chapter_id)
+        database.insert_chapter_upload_time(comic_id, chapter_id, upload_time)
 
     tqdm.write("Generating json files")
     for comic_id in database.get_comic_ids():
