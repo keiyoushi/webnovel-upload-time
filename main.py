@@ -15,16 +15,17 @@ DATA_FOLDER.mkdir(parents=True, exist_ok=True)
 BUILD_FOLDER = CWD.joinpath("build")
 BUILD_FOLDER.mkdir(parents=True, exist_ok=True)
 
+MAX_WORKERS = 10
 if os.getenv("CI") is not None:
     print("CI is enabled")
-    MAX_WORKERS = 10
+    PROXY_URL = os.getenv("PROXY_URL")
 else:
-    MAX_WORKERS = 25
+    PROXY_URL = input("Enter proxy url -> ").strip()
 
 
 def main():
     database = Database(DATA_FOLDER.joinpath("database.sqlite3"))
-    webnovel = WebNovel()
+    webnovel = WebNovel(PROXY_URL)
     page_item_count, total_item = webnovel.get_pagination_info()
     last_page = -(-total_item // page_item_count)
 

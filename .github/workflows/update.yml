@@ -34,6 +34,7 @@ jobs:
       - name: Update data and build
         env:
           CI: ""
+          PROXY_URL: ${{ secrets.PROXY_URL }}
         run: python main.py
 
       - name: Push data changes

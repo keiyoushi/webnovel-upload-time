@@ -12,12 +12,16 @@ class WebNovel:
     __MAX_RETRIES: int = 3
     __BASE_DELAY: int = 1
 
+    def __init__(self, proxy_url: str):
+        self.__proxy_url = proxy_url
+
     def __request(self, path: str, payload: Optional[dict] = None) -> Response:
         for attempts in range(self.__MAX_RETRIES):
+            response: Optional[Response] = None
             try:
-                url_params = urlencode(payload) if payload else ""
+                url_params = urlencode({"u": f"{self.__BASE_URL}{path}?{urlencode(payload) if payload else ''}"})
                 response = requests.get(
-                    url=f"{self.__BASE_URL}{path}?{url_params}",
+                    url=f"{self.__proxy_url}?{url_params}",
                     headers={
                         "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:120.0)"
                     },
@@ -25,12 +29,18 @@ class WebNovel:
 
                 response.raise_for_status()
                 return response
-
             except requests.RequestException as e:
-                print(f"Request failed: {e}")
+                if response and response.status_code == 429:
+                    tqdm.write(f"RATE LIMITED. Sleeping for a minute")
+                    time.sleep(60)
+                else:
+                    if response:
+                        tqdm.write(f"Request failed with HTTP error {response.status_code}")
+                    else:
+                        tqdm.write(f"Request failed with error")
 
-            tqdm.write(f"Failed to get response. Sleeping for a bit.")
-            time.sleep(2**attempts)
+                    tqdm.write(f"Failed to get response. Sleeping for a bit.")
+                    time.sleep(2**attempts)
 
         raise Exception(f"Failed to get response after {self.__MAX_RETRIES} tries")
 
