@@ -9,7 +9,7 @@ from tqdm.auto import tqdm
 
 class WebNovel:
     __BASE_URL: str = "https://www.webnovel.com/go/pcm"
-    __MAX_RETRIES: int = 3
+    __MAX_RETRIES: int = 10
     __BASE_DELAY: int = 1
 
     def __request(self, path: str, payload: Optional[dict] = None) -> Response:
@@ -25,7 +25,7 @@ class WebNovel:
                 response.raise_for_status()
                 return response
             except requests.RequestException as e:
-                if response is not None and response.status_code == 429:
+                if response is not None and response.status_code == 403:
                     tqdm.write(f"RATE LIMITED. Sleeping for a minute")
                     time.sleep(60)
                 else:
