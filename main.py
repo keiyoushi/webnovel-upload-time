@@ -15,11 +15,12 @@ BUILD_FOLDER.mkdir(parents=True, exist_ok=True)
 
 MAX_WORKERS = 10
 PROXY_URL = os.getenv("PROXY_URL")
+WEBHOOK_URL = os.getenv("WEBHOOK_URL")
 
 
 def main():
     database = Database(DATA_FOLDER.joinpath("database.sqlite3"))
-    webnovel = WebNovel(PROXY_URL)
+    webnovel = WebNovel(PROXY_URL, WEBHOOK_URL)
     page_item_count, total_item = webnovel.get_pagination_info()
     last_page = -(-total_item // page_item_count)
 

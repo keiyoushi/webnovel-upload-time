@@ -34,6 +34,7 @@ jobs:
       - name: Update data and build
         env:
           PROXY_URL: ${{ secrets.PROXY_URL }}
+          WEBHOOK_URL: ${{ secrets.WEBHOOK_URL }}
         run: python main.py
 
       - name: Push data changes

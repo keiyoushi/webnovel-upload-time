@@ -1,25 +1,44 @@
 import time
+import traceback
 from typing import Optional
 from urllib.parse import urlencode
 
 import requests
+from discord_webhook import DiscordWebhook
 from requests import Response
 from tqdm.auto import tqdm
 
 
 class WebNovel:
     __BASE_URL: str = "https://www.webnovel.com/go/pcm"
-    __MAX_RETRIES: int = 10
-    __BASE_DELAY: int = 1
+    __MAX_RETRIES: int = 2
     __HEADERS: dict[str, str] = {
         "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:120.0)"
     }
 
-    def __init__(self, proxy_url: Optional[str]):
+    def __init__(self, proxy_url: Optional[str], webhook_url: Optional[str]):
         self.__proxy_url = proxy_url
+        self.__webhook: Optional[DiscordWebhook] = None
+        if webhook_url:
+            self.__webhook = DiscordWebhook(url=webhook_url)
+
+        # Content contains ZERO WIDTH NON-JOINER (U+200C) characters to stop discord from trimming '\n'.
+        self.__send_webhook("‌\n‌\n‌\nSTARTING SESSION\n‌")
+
+    def __send_webhook(
+        self, content: str, embed_description: Optional[str] = None
+    ) -> None:
+        if self.__webhook is None:
+            return
+
+        self.__webhook.set_content(content=content)
+        self.__webhook.add_embed({"description": embed_description})
+        self.__webhook.execute(remove_embeds=True)
 
     def __request(self, path: str, payload: Optional[dict] = None) -> Response:
-        for attempts in range(self.__MAX_RETRIES):
+        attempt: int = 0
+        while attempt < self.__MAX_RETRIES:
+            attempt += 1
             response: Optional[Response] = None
             try:
                 url_params = urlencode(payload) if payload else ""
@@ -31,22 +50,43 @@ class WebNovel:
                 response.raise_for_status()
 
                 return response
-            except requests.RequestException as e:
+            except requests.RequestException:
                 if response is not None and response.status_code == 429:
-                    tqdm.write(f"RATE LIMITED. Sleeping for a minute")
+                    message = "RATE LIMITED. Sleeping for a minute and retrying"
+                    self.__send_webhook(f":warning: {message}")
+                    tqdm.write(message)
                     time.sleep(60)
                 else:
                     if response is not None:
-                        tqdm.write(
+                        message = (
                             f"Request failed with HTTP error {response.status_code}"
                         )
+                        embed_description = None
                     else:
-                        tqdm.write(f"Request failed with error {e}")
+                        message = f"Request failed with error"
+                        embed_description = "```py\n" + traceback.format_exc() + "```"
 
-                    tqdm.write(f"Failed to get response. Sleeping for a bit.")
-                    time.sleep(2**attempts)
+                    sleep_time: Optional[int] = None
+                    if attempt < self.__MAX_RETRIES:
+                        sleep_time: Optional[int] = 2**attempt
 
-        raise Exception(f"Failed to get response after {self.__MAX_RETRIES} tries")
+                    message += f"\nAttempt {attempt}/{self.__MAX_RETRIES}"
+
+                    if sleep_time is not None:
+                        message += f"\nRetrying in {sleep_time} seconds"
+
+                    self.__send_webhook(
+                        content=f":warning: {message}",
+                        embed_description=embed_description,
+                    )
+                    tqdm.write(message)
+
+                    if sleep_time is not None:
+                        time.sleep(sleep_time)
+
+        message = f"Failed to get response after {self.__MAX_RETRIES} tries"
+        self.__send_webhook(f":warning::warning::warning: {message} @everyone")
+        raise Exception(message)
 
     def __category_request(self, page: Optional[int] = None) -> Response:
         payload: dict[str, int] = {
