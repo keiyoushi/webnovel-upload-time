@@ -32,7 +32,8 @@ class WebNovel:
             return
 
         self.__webhook.set_content(content=content)
-        self.__webhook.add_embed({"description": embed_description})
+        if embed_description is not None:
+            self.__webhook.add_embed({"description": embed_description})
         self.__webhook.execute(remove_embeds=True)
 
     def __request(self, path: str, payload: Optional[dict] = None) -> Response:
