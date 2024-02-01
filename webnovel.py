@@ -11,26 +11,35 @@ class WebNovel:
     __BASE_URL: str = "https://www.webnovel.com/go/pcm"
     __MAX_RETRIES: int = 10
     __BASE_DELAY: int = 1
+    __HEADERS: dict[str, str] = {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:120.0)"
+    }
+
+    def __init__(self, proxy_url: Optional[str]):
+        self.__proxy_url = proxy_url
 
     def __request(self, path: str, payload: Optional[dict] = None) -> Response:
         for attempts in range(self.__MAX_RETRIES):
             response: Optional[Response] = None
             try:
                 url_params = urlencode(payload) if payload else ""
-                response = requests.get(
-                    url=f"{self.__BASE_URL}{path}?{url_params}",
-                    headers={"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:120.0)"},
-                )
+                url = f"{self.__BASE_URL}{path}?{url_params}"
+                if self.__proxy_url is not None:
+                    url = f"{self.__proxy_url}?{urlencode({'u': url})}"
 
+                response = requests.get(url=url, headers=self.__HEADERS)
                 response.raise_for_status()
+
                 return response
             except requests.RequestException as e:
-                if response is not None and response.status_code == 403:
+                if response is not None and response.status_code == 429:
                     tqdm.write(f"RATE LIMITED. Sleeping for a minute")
                     time.sleep(60)
                 else:
                     if response is not None:
-                        tqdm.write(f"Request failed with HTTP error {response.status_code}")
+                        tqdm.write(
+                            f"Request failed with HTTP error {response.status_code}"
+                        )
                     else:
                         tqdm.write(f"Request failed with error {e}")
 

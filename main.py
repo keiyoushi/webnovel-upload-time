@@ -1,9 +1,8 @@
-import concurrent.futures
 import json
+import os
 from pathlib import Path
 
 from tqdm.auto import tqdm
-from tqdm.contrib.concurrent import thread_map
 
 from database import Database
 from webnovel import WebNovel
@@ -15,11 +14,12 @@ BUILD_FOLDER = CWD.joinpath("build")
 BUILD_FOLDER.mkdir(parents=True, exist_ok=True)
 
 MAX_WORKERS = 10
+PROXY_URL = os.getenv("PROXY_URL")
 
 
 def main():
     database = Database(DATA_FOLDER.joinpath("database.sqlite3"))
-    webnovel = WebNovel()
+    webnovel = WebNovel(PROXY_URL)
     page_item_count, total_item = webnovel.get_pagination_info()
     last_page = -(-total_item // page_item_count)
 
