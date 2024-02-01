@@ -46,7 +46,8 @@ def main():
     tqdm.write("Generating json files")
     for comic_id in database.get_comic_ids():
         with open(BUILD_FOLDER.joinpath(f"{comic_id}.json"), "w") as json_file:
-            json.dump(database.get_chapter_data(comic_id), json_file)
+            json_string = json.dumps(database.get_chapter_data(comic_id), separators=(",", ":"))
+            json_file.write(json_string + "\n")
 
 
 if __name__ == "__main__":
