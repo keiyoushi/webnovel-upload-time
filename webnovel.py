@@ -22,9 +22,6 @@ class WebNovel:
         if webhook_url:
             self.__webhook = DiscordWebhook(url=webhook_url)
 
-        # Content contains ZERO WIDTH NON-JOINER (U+200C) characters to stop discord from trimming '\n'.
-        self.__send_webhook("‌\n‌\n‌\nSTARTING SESSION\n‌")
-
     def __send_webhook(
         self, content: str, embed_description: Optional[str] = None
     ) -> None:
