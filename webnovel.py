@@ -83,7 +83,7 @@ class WebNovel:
                         time.sleep(sleep_time)
 
         message = f"Failed to get response after {self.__MAX_RETRIES} tries"
-        self.__send_webhook(f":warning::warning::warning: {message} @everyone")
+        self.__send_webhook(f":warning::warning::warning: {message}")
         raise Exception(message)
 
     def __category_request(self, page: Optional[int] = None) -> Response:
