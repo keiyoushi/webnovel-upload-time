@@ -90,9 +90,9 @@ class WebNovel:
         try:
             return self.__request(path, payload).json()
         except requests.exceptions.JSONDecodeError:
-                message = f"Malformed json response, likely captcha"
-                self.__send_webhook(f":warning::warning::warning: {message}")
-                raise Exception(message)
+            message = f"Malformed json response, likely captcha"
+            self.__send_webhook(f":warning::warning::warning: {message}")
+            raise Exception(message)
 
     def __category_request(self, page: Optional[int] = None) -> dict:
         payload: dict[str, int] = {
