@@ -86,7 +86,15 @@ class WebNovel:
         self.__send_webhook(f":warning::warning::warning: {message}")
         raise Exception(message)
 
-    def __category_request(self, page: Optional[int] = None) -> Response:
+    def __api_request(self, path: str, payload: Optional[dict] = None) -> dict:
+        try:
+            return self.__request(path, payload).json()
+        except requests.exceptions.JSONDecodeError:
+                message = f"Malformed json response, likely captcha"
+                self.__send_webhook(f":warning::warning::warning: {message}")
+                raise Exception(message)
+
+    def __category_request(self, page: Optional[int] = None) -> dict:
         payload: dict[str, int] = {
             "bookStatus": 0,
             "categoryId": 0,
@@ -96,26 +104,26 @@ class WebNovel:
         if page is not None:
             payload["pageIndex"] = page
 
-        return self.__request("/category/categoryAjax", payload)
+        return self.__api_request("/category/categoryAjax", payload)
 
     def get_pagination_info(self) -> tuple[int, int]:
-        data: dict = self.__category_request().json()["data"]
+        data: dict = self.__category_request()["data"]
         return len(data["items"]), data["total"]
 
     def get_comic_ids(self, page: int) -> list[int]:
-        items: list[dict] = self.__category_request(page).json()["data"]["items"]
+        items: list[dict] = self.__category_request(page)["data"]["items"]
         return list(map(lambda item: int(item["bookId"]), items))
 
     def get_chapter_ids(self, comic_id: int) -> list[int]:
-        response: dict = self.__request(
+        response: dict = self.__api_request(
             "/comic/getChapterList", {"comicId": comic_id}
-        ).json()
+        )
         return list(
             map(lambda item: int(item["chapterId"]), response["data"]["comicChapters"])
         )
 
     def get_chapter_upload_time(self, comic_id: int, chapter_id: int) -> int:
-        response: dict = self.__request(
+        response: dict = self.__api_request(
             "/comic/getContent", {"comicId": comic_id, "chapterId": chapter_id}
-        ).json()
+        )
         return response["data"]["chapterInfo"]["publishTime"]
