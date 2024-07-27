@@ -71,7 +71,7 @@ class WebNovel:
                     message += f"\nAttempt {attempt}/{self.__MAX_RETRIES}"
 
                     if sleep_time is not None:
-                        message += f"\nRetrying in {sleep_time} seconds"
+                        message += f"\nRetrying in {sleep_time} minutes"
 
                     self.__send_webhook(
                         content=f":warning: {message}",
@@ -80,7 +80,7 @@ class WebNovel:
                     tqdm.write(message)
 
                     if sleep_time is not None:
-                        time.sleep(sleep_time)
+                        time.sleep(sleep_time*60)
 
         message = f"Failed to get response after {self.__MAX_RETRIES} tries"
         self.__send_webhook(f":warning::warning::warning: {message}")
